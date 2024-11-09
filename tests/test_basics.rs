@@ -1,3 +1,4 @@
+use fenix_university_registry::University;
 use serde_json::json;
 
 #[tokio::test]
@@ -12,19 +13,25 @@ async fn test_basics_on(contract_wasm: &[u8]) -> Result<(), Box<dyn std::error::
     let sandbox = near_workspaces::sandbox().await?;
     let contract = sandbox.dev_deploy(contract_wasm).await?;
 
-    let user_account = sandbox.dev_create_account().await?;
-
-    let outcome = user_account
-        .call(contract.id(), "set_greeting")
-        .args_json(json!({"greeting": "Hello World!"}))
+    let outcome = contract
+        .call("add_university")
+        .args_json(json!({"name": "UMA", "account_id": "admin"}))
         .transact()
         .await?;
     assert!(outcome.is_success());
 
-    let user_message_outcome = contract.view("get_greeting").args_json(json!({})).await?;
-    assert_eq!(user_message_outcome.json::<String>()?, "Hello World!");
+    let university_json = contract
+    .view("get_university_by_account_id")
+    .args_json(json!({"account_id": "admin"}))
+    .await?
+    .json::<University>()?;
 
+    let expected_university = University {
+        name: "UMA".to_string(),
+        account_id: "admin".to_string(),
+    };
+
+    assert_eq!(expected_university, university_json);
+    
     Ok(())
 }
-
-
